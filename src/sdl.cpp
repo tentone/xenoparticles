@@ -15,7 +15,6 @@ void update();
 void render();
 void dispose(SDL_Renderer **ren, SDL_Window **win, SDL_GameController **controller);
 
-
 void renderTexture(SDL_Texture *tex, SDL_Renderer *ren, int x, int y, int w = -1, int h = -1);
 SDL_Texture *renderText(const string &msg, const string &fontPath, SDL_Color color, int fontSize, SDL_Renderer *ren);
 

@@ -12,8 +12,8 @@ LDFLAGS := -lnative $(shell xeno-config --skin=native --ldflags)
 
 all: constellations
 
-constellations: src/constellations.cpp
-	g++ -O1 --std=c++11 -lSDL2 -lSDL2_image -lSDL2_ttf -lm -o $@ $< $(CFLAGS) $(LDFLAGS) -Xlinker -rpath -Xlinker /usr/xenomai/lib
+constellations: src/Constellations.cpp
+	g++ -O1 --std=c++11 -lSDL2 -lSDL2_image -lSDL2_ttf -lm -o constellations $< $(CFLAGS) $(LDFLAGS) -Xlinker -rpath -Xlinker /usr/xenomai/lib
 
 clean: 
 	rm constellations
