@@ -10,9 +10,9 @@ class Planet
 
 		Planet()
 		{
-			position = Vector2(MathUtils::random(0, 640), MathUtils::random(0, 480));
-
-			radius = MathUtils::random(20, 40);
+			position.set(MathUtils::random(0, 640), MathUtils::random(0, 480));
+			radius = MathUtils::random(20, 30);
+			
 			mass = 1000;
 		}
 
@@ -21,16 +21,8 @@ class Planet
 			//TODO <ADD CODE HERE>
 		}
 
-		void render(SDL_Renderer* renderer)
+		void render(SDL_Renderer* renderer, Camera camera)
 		{
-			SDL_Rect rect;
-			rect.x = position.x - radius;
-			rect.y = position.y - radius;
-			rect.w = radius * 2;
-			rect.h = radius * 2;
-
-			SDL_SetRenderDrawColor(renderer, 30, 30, 200, SDL_ALPHA_OPAQUE);
-
-			SDL_RenderFillRect(renderer, &rect);
+			ShapeRenderer::renderCircle(renderer, camera, Color(20, 20, 200), Circle(position.x, position.y, radius));
 		}
 };

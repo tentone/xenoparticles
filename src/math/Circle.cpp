@@ -1,17 +1,32 @@
 class Circle
 {
 	public:
-		Vector2 position;
+		float x, y;
 		float radius;
 
-		Circle(float x, float y, float _radius)
+		Circle()
 		{
-			position.set(x, y);
+			x = 0;
+			y = 0;
+			radius = 1;
+		}
+		
+		Circle(float _x, float _y, float _radius)
+		{
+			x = _x;
+			y = _y;
+			radius = _radius;
+		}
+
+		void set(float _x, float _y, float _radius)
+		{
+			x = _x;
+			y = _y;
 			radius = _radius;
 		}
 
 		bool intersetcs(Circle circle)
 		{
-			return circle.position.distance(position) <= (radius + circle.radius);
+			return MathUtils::distance(circle.x, x, circle.y, y) <= (radius + circle.radius);
 		}
 };

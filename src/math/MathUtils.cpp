@@ -10,4 +10,9 @@ class MathUtils
 		{
 			return min + random() * (max - min);
 		}
+
+		static float distance(float xa, float xb, float ya, float yb)
+		{
+			return sqrt((xb - xa) * (xb - xa) + (yb - ya) * (yb - ya));
+		}
 };

@@ -1,11 +1,20 @@
 class Camera
 {
 	public:
-		Vector2 position;
+		float x, y;
+		float zoom;
 
 		Camera()
 		{
-			position = Vector2(0, 0);
-			//TODO <ADD CODE HERE>
+			x = 0;
+			y = 0;
+			zoom = 1.0;
+		}
+
+		Camera(float _x, float _y, float _zoom)
+		{
+			x = _x;
+			y = _y;
+			zoom = _zoom;
 		}
 };

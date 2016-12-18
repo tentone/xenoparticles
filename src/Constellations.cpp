@@ -7,11 +7,12 @@
 #include <iostream>
 #include <array>
 #include <string>
+#include <list>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
-//#include <SDL2/SDL_gfx.h>
+#include <SDL2/SDL2_gfxPrimitives.h>
 
 #include <sys/mman.h>
 #include <native/task.h>
@@ -23,21 +24,26 @@
 #include "math/Vector2.cpp"
 #include "math/Color.cpp"
 #include "math/Rectangle.cpp"
+#include "math/Circle.cpp"
+
+#include "graphics/Camera.cpp"
+#include "graphics/ShapeRenderer.cpp"
 
 #include "object/Player.cpp"
 #include "object/Planet.cpp"
 #include "object/Particle.cpp"
 #include "object/World.cpp"
 
-
 using namespace std;
-
-World world;
 
 //SDL Renderer and window
 SDL_Renderer* renderer;
 SDL_Window* window;
 SDL_Event event;
+
+//World and camera
+World world;
+Camera camera;
 
 class Constellations
 {
@@ -51,7 +57,7 @@ class Constellations
 				return -1;
 			}
 
-			window = SDL_CreateWindow("Constellations", 100, 100, 640, 480, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+			window = SDL_CreateWindow("Constellations", 100, 100, 1024, 600, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 			if(window == nullptr)
 			{
 				rt_printf("Failed to create SDL Window");
@@ -111,12 +117,22 @@ class Constellations
 					{
 						quit = true;
 					}
-					if(event.type == SDL_KEYDOWN)
+					else if(event.type == SDL_KEYDOWN)
 					{
 						int key = event.key.keysym.scancode;
+						
 						if(key == SDL_SCANCODE_ESCAPE)
 						{
 							quit = true;
+						}
+
+					}
+					else if(event.type == SDL_MOUSEMOTION)
+					{
+						if(event.motion.state == SDL_PRESSED)
+						{
+							camera.x += event.motion.xrel;
+							camera.y += event.motion.yrel;
 						}
 					}
 				}
@@ -143,7 +159,7 @@ class Constellations
 			RT_TASK_INFO task_info;
 
 			rt_task_inquire(task, &task_info);
-			rt_printf("%s init\n", task_info.name);
+			rt_printf("Init %s\n", task_info.name);
 			
 			int *task_period = (int*) task_period_ns;
 			
@@ -157,14 +173,14 @@ class Constellations
 				
 				if(error)
 				{
-					rt_printf("%s Overun\n", task_info.name);
+					rt_printf("Overun\n", task_info.name);
 					break;
 				}
 
 				unsigned int delta = time - last;
 				if(last != 0) 
 				{
-					rt_printf("Measured period (ns) =  %lu\n", delta);
+					rt_printf("Period:  %luns\n", delta);
 				}
 
 				world.update(delta);
@@ -180,7 +196,7 @@ class Constellations
 			SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
 			SDL_RenderClear(renderer);
 
-			world.render(renderer);
+			world.render(renderer, camera);
 
 			SDL_RenderPresent(renderer);
 		}

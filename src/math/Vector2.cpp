@@ -15,10 +15,21 @@ class Vector2
 			y = _y;
 		}
 
+		Vector2 clone()
+		{
+			return Vector2(x, y);
+		}
+
 		void set(float _x, float _y)
 		{
 			x = _x;
 			y = _y;
+		}
+
+		void copy(Vector2 vec)
+		{
+			x = vec.x;
+			y = vec.y;
 		}
 
 		void add(Vector2 vec)
@@ -33,6 +44,34 @@ class Vector2
 			y += _y;
 		}
 
+		void sub(Vector2 vec)
+		{
+			x -= vec.x;
+			y -= vec.y;
+		}
+
+		void sub(float _x, float _y)
+		{
+			x -= _x;
+			y -= _y;
+		}
+
+		void norm()
+		{
+			float len = length();
+			
+			if(len != 0)
+			{
+				x = x / len;
+				y = y / len;
+			}
+		}
+
+		float length()
+		{
+			return sqrt(x * x + y * y);
+		}
+ 
 		void multConst(float value)
 		{
 			x *= value;
@@ -41,6 +80,6 @@ class Vector2
 
 		float distance(Vector2 vec)
 		{
-			return pow((vec.x - x) * (vec.x - x) + (vec.y - y) * (vec.y - y), 2);
+			return MathUtils::distance(x, vec.x, y, vec.y);
 		}
 };

@@ -1,4 +1,3 @@
-
 class Particle
 {
 	public:
@@ -8,13 +7,12 @@ class Particle
 		float friction;
 		float mass;
 
-		//World* world;
 		Player* owner;
-
+		
 		Particle()
 		{
-			position = Vector2(MathUtils::random(0, 640), MathUtils::random(0, 480));
-			speed = Vector2(MathUtils::random(-1, 1), MathUtils::random(-1, 1));
+			position = Vector2(MathUtils::random(0, 500), MathUtils::random(0, 500));
+			speed = Vector2(0, 0);
 			
 			friction = 0.99;
 			mass = 1;
@@ -22,25 +20,25 @@ class Particle
 			owner = nullptr;
 		}
 
+		//Set Particle owner
+		void setOwner(Player* _owner)
+		{
+			owner = _owner;
+		}
+
 		//Update particle state
 		void update(unsigned int delta)
 		{
+			speed.add(MathUtils::random(-0.1, 0.1), MathUtils::random(-0.1, 0.1));
+
 			position.add(speed);
 
 			speed.multConst(friction);
 		}
 
 		//Render particle
-		void render(SDL_Renderer* renderer)
+		void render(SDL_Renderer* renderer, Camera camera)
 		{
-			SDL_Rect rect;
-			rect.x = position.x - 2;
-			rect.y = position.y - 2;
-			rect.w = 4;
-			rect.h = 4;
-
-			SDL_SetRenderDrawColor(renderer, 200, 30, 30, SDL_ALPHA_OPAQUE);
-
-			SDL_RenderFillRect(renderer, &rect);
+			ShapeRenderer::renderRectangle(renderer, camera, Color(200, 30, 30), Rectangle(position.x - 1, position.y - 2, 2, 2));
 		}
 };

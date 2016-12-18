@@ -1,34 +1,68 @@
 class World
 {
 	public:
-		array<Particle, 10000> particles;
-		array<Planet, 10> planets;
+		list<Particle> particles;
+		list<Planet> planets;
 
 		World()
 		{
-			//TODO <ADD CODE HERE>
+			Player player_a = Player();
+			Player player_b = Player();
+
+			for(unsigned int i = 0; i < 10000; i++)
+			{	
+				Particle particle = Particle();
+				particle.setOwner(&player_a);
+
+				particles.push_back(particle);
+			}
+
+			for(unsigned int i = 0; i < 10; i++)
+			{
+				planets.push_back(Planet());
+			}
 		}
 
 		//Update world elements
 		void update(unsigned int delta)
 		{
-			for(unsigned int i = 0; i < particles.size(); i++)
+			for(list<Particle>::iterator particle = particles.begin(); particle != particles.end(); particle++)
 			{
-				particles[i].update(delta);
+				//Calculate planet gravity
+				for(list<Planet>::iterator planet = planets.begin(); planet != planets.end(); planet++)
+				{
+					Vector2 direction = planet->position.clone();
+					direction.sub(particle->position);
+					direction.norm();
+
+					float distance = particle->position.distance(planet->position);
+
+					if(distance > planet->radius)
+					{
+						direction.multConst(1 / distance);	
+					}
+					
+					
+					particle->speed.add(direction);
+
+					planet->update(delta);
+				}
+
+				particle->update(delta);
 			}
 		}
 
 		//Render world elements
-		void render(SDL_Renderer* renderer)
+		void render(SDL_Renderer* renderer, Camera camera)
 		{
-			for(unsigned int i = 0; i < planets.size(); i++)
+			for(list<Particle>::iterator it = particles.begin(); it != particles.end(); it++)
 			{
-				planets[i].render(renderer);
+				(*it).render(renderer, camera);
 			}
 
-			for(unsigned int i = 0; i < particles.size(); i++)
+			for(list<Planet>::iterator it = planets.begin(); it != planets.end(); it++)
 			{
-				particles[i].render(renderer);
+				(*it).render(renderer, camera);
 			}
 		}
 };
