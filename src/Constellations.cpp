@@ -2,6 +2,16 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
+#include <math.h>
+
+#include <iostream>
+#include <array>
+#include <string>
+
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
+//#include <SDL2/SDL_gfx.h>
 
 #include <sys/mman.h>
 #include <native/task.h>
@@ -9,62 +19,116 @@
 
 #include <rtdk.h>
 
-//SDL
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
-#include <SDL2/SDL_ttf.h>
+#include "math/MathUtils.cpp"
+#include "math/Vector2.cpp"
+#include "math/Color.cpp"
+#include "math/Rectangle.cpp"
 
-//Project files
-#include "Vector2.cpp"
+#include "object/Player.cpp"
+#include "object/Planet.cpp"
+#include "object/Particle.cpp"
+#include "object/World.cpp"
+
+
+using namespace std;
+
+World world;
+
+//SDL Renderer and window
+SDL_Renderer* renderer;
+SDL_Window* window;
+SDL_Event event;
 
 class Constellations
 {
-	private:
-		//Catches CTRL + C to allow a controlled termination of the application
-		static void catchSignal(int sig){}
-
-		static void waitExitSignal(void)
-		{
-			signal(SIGTERM, catchSignal);
-			signal(SIGINT, catchSignal);
-
-			//Wait for CTRL+C or sigterm
-			pause();
-		}
-
 	public:
-		//Initialize
+		//Initialize SDL and start update and render tasks
 		static int initialize()
 		{
+			if(SDL_Init(SDL_INIT_EVERYTHING))
+			{
+				rt_printf("Failed to initialize SDL");
+				return -1;
+			}
+
+			window = SDL_CreateWindow("Constellations", 100, 100, 640, 480, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+			if(window == nullptr)
+			{
+				rt_printf("Failed to create SDL Window");
+				return -1;
+			}
+
+			renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+			if(renderer == nullptr)
+			{
+				rt_printf("Failed to create SDL Renderer");
+				return -1;
+			}
+
+			const int flags = IMG_INIT_PNG | IMG_INIT_JPG;
+			if(IMG_Init(flags) != flags)
+			{
+				rt_printf("Failed to load the Image loading extensions");
+				return -1;
+			}
+
+			if(TTF_Init() != 0)
+			{
+				rt_printf("Failed to load TTF extension");
+				return -1;
+			}
+
 			//Perform auto-init of rt_print buffers if the task doesn't do so
 			rt_print_auto_init(1);
 
 			//Lock memory to prevent paging
-			mlockall(MCL_CURRENT|MCL_FUTURE);
+			mlockall(MCL_CURRENT | MCL_FUTURE);
 
-			//60 fps target
+			//60hz target
 			int period = 16666666;
 
 			//Update task
 			RT_TASK task_update;
-			if(rt_task_create(&task_update, "Update", 0, 99, 0))
+			if(rt_task_create(&task_update, "Update", 0, 99, T_CPU(0)))
 			{
 				rt_printf("Error creating update task");
 				return -1;
 			}
 			rt_task_start(&task_update, &update, (void *)&period);
 
-			//Render task
-			RT_TASK task_render;
-			if(rt_task_create(&task_render, "Render", 0, 95, 0))
+			//Render loop
+			while(1)
 			{
-				rt_printf("Error creating render task");
-				return -1;
-			}
-			rt_task_start(&task_render, &render, (void *)&period);
+				//Render stuff into screen
+				render();
 
-			//Wait for termination signal
-			waitExitSignal();
+				//Check if exit key pressed
+				bool quit = false;
+
+				while(SDL_PollEvent(&event))
+				{
+					if(event.type == SDL_QUIT)
+					{
+						quit = true;
+					}
+					if(event.type == SDL_KEYDOWN)
+					{
+						int key = event.key.keysym.scancode;
+						if(key == SDL_SCANCODE_ESCAPE)
+						{
+							quit = true;
+						}
+					}
+				}
+
+				if(quit)
+				{
+					break;
+				}
+			}
+
+			//Dispose program
+			dispose();
 
 			return 0;
 		}
@@ -72,82 +136,64 @@ class Constellations
 		//Update simulation logic
 		static void update(void *task_period_ns)
 		{
-			RT_TASK *curtask;
-			RT_TASK_INFO curtaskinfo;
-			int *task_period;
-
-			RTIME to = 0,ta = 0;
+			unsigned int last = 0, time = 0;
 			unsigned long overruns;
-			int err;
+
+			RT_TASK *task = rt_task_self();
+			RT_TASK_INFO task_info;
+
+			rt_task_inquire(task, &task_info);
+			rt_printf("%s init\n", task_info.name);
 			
-			//Get task information
-			curtask = rt_task_self();
-			rt_task_inquire(curtask,&curtaskinfo);
-			rt_printf("%s init\n", curtaskinfo.name);
-			task_period = (int *)task_period_ns;
+			int *task_period = (int*) task_period_ns;
 			
 			//Set task as periodic
-			err = rt_task_set_periodic(NULL, TM_NOW, *task_period);
+			int error = rt_task_set_periodic(NULL, TM_NOW, *task_period);
 			
 			while(1)
 			{
-				err = rt_task_wait_period(&overruns);
-				ta = rt_timer_read();
+				error = rt_task_wait_period(&overruns);
+				time = rt_timer_read();
 				
-				if(err)
+				if(error)
 				{
-					rt_printf("%s overrun!!!\n", curtaskinfo.name);
+					rt_printf("%s Overun\n", task_info.name);
 					break;
 				}
-				
-				rt_printf("%s activation\n", curtaskinfo.name);
-				if(to != 0) 
+
+				unsigned int delta = time - last;
+				if(last != 0) 
 				{
-					rt_printf("Measured period (ns) =  %lu\n",ta-to);
+					rt_printf("Measured period (ns) =  %lu\n", delta);
 				}
 
-				to = ta;
+				world.update(delta);
+
+				last = time;
 			}
 		}
 
 		//Render stuff into screen
-		static void render(void *task_period_ns)
+		static void render()
 		{
-			RT_TASK *curtask;
-			RT_TASK_INFO curtaskinfo;
-			int *task_period;
+			SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_ADD);
+			SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+			SDL_RenderClear(renderer);
 
-			RTIME to = 0,ta = 0;
-			unsigned long overruns;
-			int err;
-			
-			//Get task information
-			curtask = rt_task_self();
-			rt_task_inquire(curtask,&curtaskinfo);
-			rt_printf("%s init\n", curtaskinfo.name);
-			task_period = (int *)task_period_ns;
-			
-			//Set task as periodic
-			err = rt_task_set_periodic(NULL, TM_NOW, *task_period);
-			while(1)
-			{
-				err = rt_task_wait_period(&overruns);
-				ta = rt_timer_read();
-				
-				if(err)
-				{
-					rt_printf("%s overrun!!!\n", curtaskinfo.name);
-					break;
-				}
-				
-				rt_printf("%s activation\n", curtaskinfo.name);
-				if(to != 0) 
-				{
-					rt_printf("Measured period (ns) =  %lu\n",ta-to);
-				}
+			world.render(renderer);
 
-				to = ta;
-			}
+			SDL_RenderPresent(renderer);
+		}
+
+		//Dispose program
+		static void dispose()
+		{
+			SDL_DestroyRenderer(renderer);
+			SDL_DestroyWindow(window);
+
+			TTF_Quit();
+			IMG_Quit();
+			SDL_Quit();
 		}
 };
 
