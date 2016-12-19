@@ -45,6 +45,12 @@ SDL_Event event;
 World world;
 Camera camera;
 
+//Tasks
+RT_TASK task_update_world, task_input;
+
+//Program status
+bool alive = true;
+
 class Constellations
 {
 	public:
@@ -90,57 +96,16 @@ class Constellations
 			//Lock memory to prevent paging
 			mlockall(MCL_CURRENT | MCL_FUTURE);
 
-			//60hz target
-			int period = 16666666;
-
-			//Update task
-			RT_TASK task_update;
-			if(rt_task_create(&task_update, "Update", 0, 99, T_CPU(0)))
+			//Start tasks
+			if(!startTasks())
 			{
-				rt_printf("Error creating update task");
 				return -1;
 			}
-			rt_task_start(&task_update, &update, (void *)&period);
 
 			//Render loop
-			while(1)
+			while(alive)
 			{
-				//Render stuff into screen
 				render();
-
-				//Check if exit key pressed
-				bool quit = false;
-
-				while(SDL_PollEvent(&event))
-				{
-					if(event.type == SDL_QUIT)
-					{
-						quit = true;
-					}
-					else if(event.type == SDL_KEYDOWN)
-					{
-						int key = event.key.keysym.scancode;
-						
-						if(key == SDL_SCANCODE_ESCAPE)
-						{
-							quit = true;
-						}
-
-					}
-					else if(event.type == SDL_MOUSEMOTION)
-					{
-						if(event.motion.state == SDL_PRESSED)
-						{
-							camera.x += event.motion.xrel;
-							camera.y += event.motion.yrel;
-						}
-					}
-				}
-
-				if(quit)
-				{
-					break;
-				}
 			}
 
 			//Dispose program
@@ -149,8 +114,38 @@ class Constellations
 			return 0;
 		}
 		
+		//Start tasks
+		static bool startTasks()
+		{
+			int period = 16666666;
+
+			//Update world task
+			if(rt_task_create(&task_update_world, "World", 0, 90, T_CPU(0)))
+			{
+				rt_printf("Error creating update task");
+				return false;
+			}
+			rt_task_start(&task_update_world, &taskUpdateWorld, (void *)&period);
+
+			//Update input task
+			if(rt_task_create(&task_input, "Input", 0, 50, T_CPU(1)))
+			{
+				rt_printf("Error creating input task");
+				return false;
+			}
+			rt_task_start(&task_input, &taskInput, (void *)&period);
+
+			return true;
+		}
+
+		//Destroy running tasks
+		static void destroyTasks()
+		{
+			//TODO <ADD CODE HERE>
+		}
+
 		//Update simulation logic
-		static void update(void *task_period_ns)
+		static void taskInput(void *task_period_ns)
 		{
 			unsigned int last = 0, time = 0;
 			unsigned long overruns;
@@ -164,23 +159,116 @@ class Constellations
 			int *task_period = (int*) task_period_ns;
 			
 			//Set task as periodic
-			int error = rt_task_set_periodic(NULL, TM_NOW, *task_period);
+			int error = rt_task_set_periodic(NULL, TM_NOW, 16666666);
 			
 			while(1)
 			{
 				error = rt_task_wait_period(&overruns);
 				time = rt_timer_read();
 				
+				unsigned int delta = time - last;
+
 				if(error)
 				{
-					rt_printf("Overun\n", task_info.name);
+					rt_printf("Overun: %luns\n", delta);
 					break;
 				}
-
-				unsigned int delta = time - last;
+				
 				if(last != 0) 
 				{
-					rt_printf("Period:  %luns\n", delta);
+					rt_printf("Input: %luns\n", delta);
+				}
+
+				while(SDL_PollEvent(&event))
+				{
+					if(event.type == SDL_QUIT)
+					{
+						alive = false;
+					}
+					else if(event.type == SDL_KEYDOWN)
+					{
+						int key = event.key.keysym.scancode;
+						
+						if(key == SDL_SCANCODE_ESCAPE)
+						{
+							alive = false;
+						}
+						else if(key == SDL_SCANCODE_SPACE)
+						{
+							world.randomizePlanets();
+						}
+					}
+					else if(event.type == SDL_MOUSEMOTION)
+					{
+						if(event.motion.state == SDL_PRESSED)
+						{
+							bool found = false;
+							
+							//Check if pressing a planet
+							for(list<Planet>::iterator planet = world.planets.begin(); planet != world.planets.end(); planet++)
+							{
+								float x = event.motion.x / camera.zoom - camera.x;
+								float y = event.motion.y / camera.zoom - camera.y;
+
+								if(planet->contains(x, y))
+								{
+									found = true;
+									planet->position.add(event.motion.xrel / camera.zoom, event.motion.yrel / camera.zoom);
+									break;
+								}
+							}
+
+							//Move camera
+							if(!found)
+							{
+								camera.x += event.motion.xrel / camera.zoom;
+								camera.y += event.motion.yrel / camera.zoom;
+							}
+						}
+					}
+					else if(event.type == SDL_MOUSEWHEEL)
+					{
+						camera.zoom += event.wheel.y * 0.1;
+					}
+				}
+
+				last = time;
+			}
+		}
+
+		//Update simulation logic
+		static void taskUpdateWorld(void *task_period_ns)
+		{
+			unsigned int last = 0, time = 0;
+			unsigned long overruns;
+
+			RT_TASK *task = rt_task_self();
+			RT_TASK_INFO task_info;
+
+			rt_task_inquire(task, &task_info);
+			rt_printf("Init %s\n", task_info.name);
+			
+			int *task_period = (int*) task_period_ns;
+			
+			//Set task as periodic
+			int error = rt_task_set_periodic(NULL, TM_NOW, 16666666);
+			
+			while(1)
+			{
+				error = rt_task_wait_period(&overruns);
+				time = rt_timer_read();
+				
+				unsigned int delta = time - last;
+
+				if(error)
+				{
+					rt_printf("Overun: %luns\n", delta);
+					//break;
+				}
+				
+				if(last != 0) 
+				{
+					rt_printf("World Update: %luns\n", delta);
 				}
 
 				world.update(delta);

@@ -12,8 +12,7 @@ class Player
 		{
 			id = random();
 			name = "player";
-			
-			color = Color(0, 255, 0);
+			color.set(255, 0, 0);
 		}
 
 		void setColor(unsigned int r, unsigned int g, unsigned int b)

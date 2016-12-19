@@ -6,20 +6,32 @@ class World
 
 		World()
 		{
-			Player player_a = Player();
-			Player player_b = Player();
+			Player a = Player();
+			a.setColor(200, 20, 20);
 
-			for(unsigned int i = 0; i < 10000; i++)
+			Player b = Player();
+			b.setColor(20, 20, 200);
+
+			//Create Creatures
+			for(unsigned int i = 0; i < 15000; i++)
 			{	
-				Particle particle = Particle();
-				particle.setOwner(&player_a);
-
-				particles.push_back(particle);
+				particles.push_back(Particle(a));
+				particles.push_back(Particle(b));
 			}
 
+			//Create planets
 			for(unsigned int i = 0; i < 10; i++)
 			{
 				planets.push_back(Planet());
+			}
+		}
+
+		//Randomize planet positions
+		void randomizePlanets()
+		{
+			for(list<Planet>::iterator planet = planets.begin(); planet != planets.end(); planet++)
+			{
+				planet->position.set(MathUtils::random(0, 600), MathUtils::random(0, 600));
 			}
 		}
 
@@ -41,13 +53,17 @@ class World
 					{
 						direction.multConst(1 / distance);	
 					}
-					
+					else
+					{
+						direction.multConst(-0.3);
+					}
 					
 					particle->speed.add(direction);
 
 					planet->update(delta);
 				}
 
+				//Update particle movement
 				particle->update(delta);
 			}
 		}
@@ -55,11 +71,13 @@ class World
 		//Render world elements
 		void render(SDL_Renderer* renderer, Camera camera)
 		{
+			//Draw particles
 			for(list<Particle>::iterator it = particles.begin(); it != particles.end(); it++)
 			{
 				(*it).render(renderer, camera);
 			}
 
+			//Draw planets
 			for(list<Planet>::iterator it = planets.begin(); it != planets.end(); it++)
 			{
 				(*it).render(renderer, camera);
