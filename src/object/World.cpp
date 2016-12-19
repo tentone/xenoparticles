@@ -46,7 +46,7 @@ class World
 					Vector2 direction = planet->position.clone();
 					direction.sub(particle->position);
 					direction.norm();
-
+					
 					float distance = particle->position.distance(planet->position);
 
 					if(distance > planet->radius)

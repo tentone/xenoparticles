@@ -46,7 +46,8 @@ World world;
 Camera camera;
 
 //Tasks
-RT_TASK task_update_world, task_input;
+RT_TASK task_update_a, task_update_b, task_update_c;
+RT_TASK task_input;
 
 //Program status
 bool alive = true;
@@ -108,6 +109,9 @@ class Constellations
 				render();
 			}
 
+			//Destroy running tasks
+			destroyTasks();
+
 			//Dispose program
 			dispose();
 
@@ -117,15 +121,30 @@ class Constellations
 		//Start tasks
 		static bool startTasks()
 		{
-			int period = 16666666;
-
 			//Update world task
-			if(rt_task_create(&task_update_world, "World", 0, 90, T_CPU(0)))
+			int period_a = 16666666;
+			if(rt_task_create(&task_update_a, "a", 0, 90, T_CPU(0)))
 			{
 				rt_printf("Error creating update task");
 				return false;
 			}
-			rt_task_start(&task_update_world, &taskUpdateWorld, (void *)&period);
+			rt_task_start(&task_update_a, &taskUpdateWorld, &period_a);
+
+			/*int period_b = 5000000;
+			if(rt_task_create(&task_update_b, "b", 0, 70, T_CPU(0)))
+			{
+				rt_printf("Error creating update task");
+				return false;
+			}
+			rt_task_start(&task_update_b, &taskUpdateWorld, &period_b);
+
+			int period_c = 33333333;
+			if(rt_task_create(&task_update_c, "c", 0, 90, T_CPU(1)))
+			{
+				rt_printf("Error creating update task");
+				return false;
+			}
+			rt_task_start(&task_update_c, &taskUpdateWorld, &period_c);*/
 
 			//Update input task
 			if(rt_task_create(&task_input, "Input", 0, 50, T_CPU(1)))
@@ -133,7 +152,7 @@ class Constellations
 				rt_printf("Error creating input task");
 				return false;
 			}
-			rt_task_start(&task_input, &taskInput, (void *)&period);
+			rt_task_start(&task_input, &taskInput, nullptr);
 
 			return true;
 		}
@@ -141,11 +160,12 @@ class Constellations
 		//Destroy running tasks
 		static void destroyTasks()
 		{
-			//TODO <ADD CODE HERE>
+			rt_task_delete(&task_update_a);
+			rt_task_delete(&task_input);
 		}
 
 		//Update simulation logic
-		static void taskInput(void *task_period_ns)
+		static void taskInput(void *value)
 		{
 			unsigned int last = 0, time = 0;
 			unsigned long overruns;
@@ -156,9 +176,7 @@ class Constellations
 			rt_task_inquire(task, &task_info);
 			rt_printf("Init %s\n", task_info.name);
 			
-			int *task_period = (int*) task_period_ns;
-			
-			//Set task as periodic
+			//Set task as periodic (120hz)
 			int error = rt_task_set_periodic(NULL, TM_NOW, 16666666);
 			
 			while(1)
@@ -237,7 +255,7 @@ class Constellations
 		}
 
 		//Update simulation logic
-		static void taskUpdateWorld(void *task_period_ns)
+		static void taskUpdateWorld(void *value)
 		{
 			unsigned int last = 0, time = 0;
 			unsigned long overruns;
@@ -248,10 +266,10 @@ class Constellations
 			rt_task_inquire(task, &task_info);
 			rt_printf("Init %s\n", task_info.name);
 			
-			int *task_period = (int*) task_period_ns;
-			
-			//Set task as periodic
-			int error = rt_task_set_periodic(NULL, TM_NOW, 16666666);
+			int* period = (int*)value; 
+
+			//Set task as periodic 
+			int error = rt_task_set_periodic(NULL, TM_NOW, *period);
 			
 			while(1)
 			{
@@ -263,12 +281,12 @@ class Constellations
 				if(error)
 				{
 					rt_printf("Overun: %luns\n", delta);
-					//break;
+					break;
 				}
 				
 				if(last != 0) 
 				{
-					rt_printf("World Update: %luns\n", delta);
+					rt_printf("World %s update: %luns\n", task_info.name, delta);
 				}
 
 				world.update(delta);

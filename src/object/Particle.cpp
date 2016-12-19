@@ -8,13 +8,23 @@ class Particle
 
 		Player owner;
 		
+		Particle()
+		{
+			position = Vector2(MathUtils::random(0, 500), MathUtils::random(0, 500));
+			speed = Vector2(0, 0);
+			
+			friction = 0.99;
+			turbulence = 0.002;
+			mass = 1;
+		}
+
 		Particle(Player _owner)
 		{
 			position = Vector2(MathUtils::random(0, 500), MathUtils::random(0, 500));
 			speed = Vector2(0, 0);
 			
 			friction = 0.99;
-			turbulence = 0.001;
+			turbulence = 0.002;
 			mass = 1;
 
 			owner = _owner;
