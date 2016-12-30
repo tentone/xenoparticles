@@ -13,8 +13,8 @@ class Particle
 			position = Vector2(MathUtils::random(0, 500), MathUtils::random(0, 500));
 			speed = Vector2(0, 0);
 			
-			friction = 0.99;
-			turbulence = 0.002;
+			friction = 1.0; //0.99;
+			turbulence = 0.04;
 			mass = 1;
 		}
 

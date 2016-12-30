@@ -47,6 +47,7 @@ Camera camera;
 
 //Tasks
 RT_TASK task_update_a, task_update_b, task_update_c;
+bool task_running_a, task_running_b, task_running_c; 
 RT_TASK task_input;
 
 //Program status
@@ -122,29 +123,32 @@ class Constellations
 		static bool startTasks()
 		{
 			//Update world task
-			int period_a = 16666666;
+			int period_a = 25000000;//16666666;
+			task_running_a = true;
 			if(rt_task_create(&task_update_a, "a", 0, 90, T_CPU(0)))
 			{
 				rt_printf("Error creating update task");
 				return false;
 			}
-			rt_task_start(&task_update_a, &taskUpdateWorld, &period_a);
+			rt_task_start(&task_update_a, &taskUpdateWorldA, &period_a);
 
-			/*int period_b = 5000000;
+			int period_b = 25000000;//16666666;
+			task_running_b = true;
 			if(rt_task_create(&task_update_b, "b", 0, 70, T_CPU(0)))
 			{
 				rt_printf("Error creating update task");
 				return false;
 			}
-			rt_task_start(&task_update_b, &taskUpdateWorld, &period_b);
+			rt_task_start(&task_update_b, &taskUpdateWorldB, &period_b);
 
-			int period_c = 33333333;
-			if(rt_task_create(&task_update_c, "c", 0, 90, T_CPU(1)))
+			int period_c = 25000000;//16666666;
+			task_running_c = true;
+			if(rt_task_create(&task_update_c, "c", 0, 80, T_CPU(1)))
 			{
 				rt_printf("Error creating update task");
 				return false;
 			}
-			rt_task_start(&task_update_c, &taskUpdateWorld, &period_c);*/
+			rt_task_start(&task_update_c, &taskUpdateWorldC, &period_c);
 
 			//Update input task
 			if(rt_task_create(&task_input, "Input", 0, 50, T_CPU(1)))
@@ -161,6 +165,8 @@ class Constellations
 		static void destroyTasks()
 		{
 			rt_task_delete(&task_update_a);
+			rt_task_delete(&task_update_b);
+			rt_task_delete(&task_update_c);
 			rt_task_delete(&task_input);
 		}
 
@@ -188,13 +194,13 @@ class Constellations
 
 				if(error)
 				{
-					rt_printf("Overun: %luns\n", delta);
+					//rt_printf("Overun: %luns\n", delta);
 					break;
 				}
 				
 				if(last != 0) 
 				{
-					rt_printf("Input: %luns\n", delta);
+					//rt_printf("Input: %luns\n", delta);
 				}
 
 				while(SDL_PollEvent(&event))
@@ -214,6 +220,19 @@ class Constellations
 						else if(key == SDL_SCANCODE_SPACE)
 						{
 							world.randomizePlanets();
+						}
+						else if(key == SDL_SCANCODE_A)
+						{
+							if(task_running_a)
+							{
+								rt_task_suspend(&task_update_a);
+							}
+							else
+							{
+								rt_task_resume(&task_update_a);
+							}
+							
+							task_running_a = !task_running_a;
 						}
 					}
 					else if(event.type == SDL_MOUSEMOTION)
@@ -255,7 +274,7 @@ class Constellations
 		}
 
 		//Update simulation logic
-		static void taskUpdateWorld(void *value)
+		static void taskUpdateWorldA(void *value)
 		{
 			unsigned int last = 0, time = 0;
 			unsigned long overruns;
@@ -280,16 +299,96 @@ class Constellations
 
 				if(error)
 				{
-					rt_printf("Overun: %luns\n", delta);
+					//rt_printf("Overun: %luns\n", delta);
 					break;
 				}
 				
 				if(last != 0) 
 				{
-					rt_printf("World %s update: %luns\n", task_info.name, delta);
+					//rt_printf("World %s update: %luns\n", task_info.name, delta);
 				}
 
-				world.update(delta);
+				world.update(delta, &world.particles_a);
+
+				last = time;
+			}
+		}
+
+		static void taskUpdateWorldB(void *value)
+		{
+			unsigned int last = 0, time = 0;
+			unsigned long overruns;
+
+			RT_TASK *task = rt_task_self();
+			RT_TASK_INFO task_info;
+
+			rt_task_inquire(task, &task_info);
+			rt_printf("Init %s\n", task_info.name);
+			
+			int* period = (int*)value; 
+
+			//Set task as periodic 
+			int error = rt_task_set_periodic(NULL, TM_NOW, *period);
+			
+			while(1)
+			{
+				error = rt_task_wait_period(&overruns);
+				time = rt_timer_read();
+				
+				unsigned int delta = time - last;
+
+				if(error)
+				{
+					//rt_printf("Overun: %luns\n", delta);
+					break;
+				}
+				
+				if(last != 0) 
+				{
+					//rt_printf("World %s update: %luns\n", task_info.name, delta);
+				}
+
+				world.update(delta, &world.particles_b);
+
+				last = time;
+			}
+		}
+
+		static void taskUpdateWorldC(void *value)
+		{
+			unsigned int last = 0, time = 0;
+			unsigned long overruns;
+
+			RT_TASK *task = rt_task_self();
+			RT_TASK_INFO task_info;
+
+			rt_task_inquire(task, &task_info);
+			rt_printf("Init %s\n", task_info.name);
+			
+			int* period = (int*)value; 
+
+			//Set task as periodic 
+			int error = rt_task_set_periodic(NULL, TM_NOW, *period);
+			
+			while(1)
+			{
+				error = rt_task_wait_period(&overruns);
+				time = rt_timer_read();
+				
+				unsigned int delta = time - last;
+
+				if(error)
+				{
+					//rt_printf("Overun: %luns\n", delta);
+					break;
+				}
+				
+				if(last != 0) 
+				{
+					//rt_printf("World %s update: %luns\n", task_info.name, delta);
+				}
+
+				world.update(delta, &world.particles_c);
 
 				last = time;
 			}
