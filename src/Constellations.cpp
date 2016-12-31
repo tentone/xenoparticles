@@ -45,9 +45,11 @@ SDL_Event event;
 World world;
 Camera camera;
 
-//Tasks
+//World update tasks
 RT_TASK task_update_a, task_update_b, task_update_c;
-bool task_running_a, task_running_b, task_running_c; 
+bool task_running_a, task_running_b, task_running_c;
+
+//Input task
 RT_TASK task_input;
 
 //Program status
@@ -123,7 +125,7 @@ class Constellations
 		static bool startTasks()
 		{
 			//Update world task
-			int period_a = 25000000;//16666666;
+			int period_a = 16666666;
 			task_running_a = true;
 			if(rt_task_create(&task_update_a, "a", 0, 90, T_CPU(0)))
 			{
@@ -132,18 +134,18 @@ class Constellations
 			}
 			rt_task_start(&task_update_a, &taskUpdateWorldA, &period_a);
 
-			int period_b = 25000000;//16666666;
+			int period_b = 16666666;
 			task_running_b = true;
-			if(rt_task_create(&task_update_b, "b", 0, 70, T_CPU(0)))
+			if(rt_task_create(&task_update_b, "b", 0, 70, T_CPU(1)))
 			{
 				rt_printf("Error creating update task");
 				return false;
 			}
 			rt_task_start(&task_update_b, &taskUpdateWorldB, &period_b);
 
-			int period_c = 25000000;//16666666;
+			int period_c = 16666666;
 			task_running_c = true;
-			if(rt_task_create(&task_update_c, "c", 0, 80, T_CPU(1)))
+			if(rt_task_create(&task_update_c, "c", 0, 80, T_CPU(2)))
 			{
 				rt_printf("Error creating update task");
 				return false;
@@ -151,7 +153,7 @@ class Constellations
 			rt_task_start(&task_update_c, &taskUpdateWorldC, &period_c);
 
 			//Update input task
-			if(rt_task_create(&task_input, "Input", 0, 50, T_CPU(1)))
+			if(rt_task_create(&task_input, "Input", 0, 50, T_CPU(3)))
 			{
 				rt_printf("Error creating input task");
 				return false;
@@ -194,7 +196,7 @@ class Constellations
 
 				if(error)
 				{
-					//rt_printf("Overun: %luns\n", delta);
+					rt_printf("Input task overrun: %luns\n", delta);
 					break;
 				}
 				
@@ -276,7 +278,9 @@ class Constellations
 		//Update simulation logic
 		static void taskUpdateWorldA(void *value)
 		{
-			unsigned int last = 0, time = 0;
+			unsigned int last = 0, now = 0;
+			unsigned int max = 0, min = 2147483647;
+			unsigned long time = 0, runs = 0;
 			unsigned long overruns;
 
 			RT_TASK *task = rt_task_self();
@@ -293,30 +297,46 @@ class Constellations
 			while(1)
 			{
 				error = rt_task_wait_period(&overruns);
-				time = rt_timer_read();
+				now = rt_timer_read();
 				
-				unsigned int delta = time - last;
-
+				unsigned int delta = now - last;
+				
+				//Check error flag
 				if(error)
 				{
-					//rt_printf("Overun: %luns\n", delta);
-					break;
+					rt_printf("Overun: %luns\n", delta);
 				}
 				
-				if(last != 0) 
+				//Update and print time
+				if(last != 0)
 				{
-					//rt_printf("World %s update: %luns\n", task_info.name, delta);
+					time += delta;
+					runs++;
+
+					if(delta < min)
+					{
+						min = delta;
+					}
+
+					if(delta > max)
+					{
+						max = delta;
+					}
+
+					rt_printf("%s AVG:%lu | MAX:%lu | MIN: %lu\n", task_info.name, time / runs, max, min);
 				}
 
 				world.update(delta, &world.particles_a);
 
-				last = time;
+				last = now;
 			}
 		}
 
 		static void taskUpdateWorldB(void *value)
 		{
-			unsigned int last = 0, time = 0;
+			unsigned int last = 0, now = 0;
+			unsigned int max = 0, min = 2147483647;
+			unsigned long time = 0, runs = 0;
 			unsigned long overruns;
 
 			RT_TASK *task = rt_task_self();
@@ -333,30 +353,46 @@ class Constellations
 			while(1)
 			{
 				error = rt_task_wait_period(&overruns);
-				time = rt_timer_read();
+				now = rt_timer_read();
 				
-				unsigned int delta = time - last;
-
+				unsigned int delta = now - last;
+				
+				//Check error flag
 				if(error)
 				{
-					//rt_printf("Overun: %luns\n", delta);
-					break;
+					rt_printf("Overun: %luns\n", delta);
 				}
 				
-				if(last != 0) 
+				//Update and print time
+				if(last != 0)
 				{
-					//rt_printf("World %s update: %luns\n", task_info.name, delta);
+					time += delta;
+					runs++;
+
+					if(delta < min)
+					{
+						min = delta;
+					}
+
+					if(delta > max)
+					{
+						max = delta;
+					}
+
+					rt_printf("%s AVG:%lu | MAX:%lu | MIN: %lu\n", task_info.name, time / runs, max, min);
 				}
 
 				world.update(delta, &world.particles_b);
 
-				last = time;
+				last = now;
 			}
 		}
 
 		static void taskUpdateWorldC(void *value)
 		{
-			unsigned int last = 0, time = 0;
+			unsigned int last = 0, now = 0;
+			unsigned int max = 0, min = 2147483647;
+			unsigned long time = 0, runs = 0;
 			unsigned long overruns;
 
 			RT_TASK *task = rt_task_self();
@@ -373,24 +409,38 @@ class Constellations
 			while(1)
 			{
 				error = rt_task_wait_period(&overruns);
-				time = rt_timer_read();
+				now = rt_timer_read();
 				
-				unsigned int delta = time - last;
-
+				unsigned int delta = now - last;
+				
+				//Check error flag
 				if(error)
 				{
-					//rt_printf("Overun: %luns\n", delta);
-					break;
+					rt_printf("Overun: %luns\n", delta);
 				}
 				
-				if(last != 0) 
+				//Update and print time
+				if(last != 0)
 				{
-					//rt_printf("World %s update: %luns\n", task_info.name, delta);
+					time += delta;
+					runs++;
+
+					if(delta < min)
+					{
+						min = delta;
+					}
+
+					if(delta > max)
+					{
+						max = delta;
+					}
+
+					rt_printf("%s AVG:%lu | MAX:%lu | MIN: %lu\n", task_info.name, time / runs, max, min);
 				}
 
 				world.update(delta, &world.particles_c);
 
-				last = time;
+				last = now;
 			}
 		}
 

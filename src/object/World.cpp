@@ -15,8 +15,8 @@ class World
 			Player c = Player();
 			c.setColor(100, 100, 20);
 
-			//Create Creatures
-			for(unsigned int i = 0; i < 30000; i++)
+			//Create particles
+			for(unsigned int i = 0; i < 30000; i += 3)
 			{	
 				particles_a.push_back(Particle(a));
 				particles_b.push_back(Particle(b));
