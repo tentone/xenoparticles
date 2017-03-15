@@ -1,11 +1,12 @@
-# Constellations
-Constellations particle real-time simulation using xenomai
-To test xenomai as a RT framework
+# XenoParticles
+Simple real-time particle simulation using xenomai real time framework.
 
-# Todo
- - Planet orbit
- - Particle orbit
+Developed and tested with Xenomai 2.6.5.
 
-# Library
+# Video
+[![](https://img.youtube.com/vi/4Hiy8Mrv9OM/0.jpg)](https://www.youtube.com/watch?v=4Hiy8Mrv9OM)
+
+# Libraries
  - SDL V2.0
  - Xenomai V2.6.5
+ 
